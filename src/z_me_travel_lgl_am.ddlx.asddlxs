@@ -1,0 +1,63 @@
+@Metadata.layer: #CORE
+
+// 1.CUSTOMER
+// 2. PARTNER
+// 3. INDUSTRY
+// 4. LOCALIZATION
+// 5. CORE
+
+@UI: { headerInfo : { typeName: 'Travel',
+                      typeNamePlural: 'Travels',
+                      title: { type: #STANDARD,
+                               value: 'TravelID' } },
+       presentationVariant: [{ sortOrder: [ { by: 'TravelID',
+                                              direction: #DESC } ],
+                               visualizations: [{ type: #AS_LINEITEM }] }] }
+
+annotate entity Z_C_TRAVEL_LGL_AM with
+{
+  @UI: { lineItem: [{ position: 10,
+                   importance: #HIGH,
+                   label: 'Travel ID' }],
+         selectionField: [{ position: 10 }] }
+  TravelID;
+
+  @UI: { lineItem: [{ position: 20,
+                   importance: #HIGH,
+                   label: 'Travel ID' }],
+         selectionField: [{ position: 20 }] }
+  AgencyID;
+
+  @UI: { lineItem: [{ position: 30,
+                   importance: #HIGH,
+                   label: 'Travel ID' }],
+         selectionField: [{ position: 30 }] }
+  CustomerID;
+
+  @UI.lineItem: [{ position: 40,
+                  importance: #MEDIUM }]
+  BeginDate;
+
+  @UI.lineItem: [{ position: 50,
+                importance: #MEDIUM }]
+  EndDate;
+
+  @UI.lineItem: [{ position: 60,
+                importance: #LOW }]
+  BookingFee;
+
+  @UI.lineItem: [{ position: 70,
+              importance: #HIGH }]
+  TotalPrice;
+
+  @UI.lineItem: [{ position: 80,
+            importance: #HIGH }]
+  CurrencyCode;
+
+  @UI: { lineItem: [{ position: 90,
+                   importance: #LOW,
+                   label: 'Travel ID' }],
+         selectionField: [{ position: 40 }] }
+  OverallStatus;
+
+}
