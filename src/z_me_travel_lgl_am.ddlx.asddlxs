@@ -22,12 +22,20 @@ annotate entity Z_C_TRAVEL_LGL_AM with
          selectionField: [{ position: 10 }] }
   TravelID;
 
+
+  @Consumption.valueHelpDefinition: [ { entity: { name: '/DMO/I_Agency_StdVH',
+                                                  element: 'AgencyID' },
+                                        useForValidation: true } ]
   @UI: { lineItem: [{ position: 20,
                    importance: #HIGH,
                    label: 'Travel ID' }],
          selectionField: [{ position: 20 }] }
   AgencyID;
 
+
+  @Consumption.valueHelpDefinition: [ { entity: { name: '/DMO/I_Customer_StdVH',
+                                                  element: 'CustomerID' },
+                                        useForValidation: true } ]
   @UI: { lineItem: [{ position: 30,
                    importance: #HIGH,
                    label: 'Travel ID' }],
@@ -50,10 +58,15 @@ annotate entity Z_C_TRAVEL_LGL_AM with
               importance: #HIGH }]
   TotalPrice;
 
+  @Consumption.valueHelpDefinition: [ { entity: { name: 'I_CurrencyStdVH',
+                                                  element: 'Currency' },
+                                        useForValidation: true } ]
   @UI.lineItem: [{ position: 80,
             importance: #HIGH }]
   CurrencyCode;
-
+   
+    @Consumption.valueHelpDefinition: [ { entity: { name: '/DMO/I_Overall_Status_VH',
+                                                    element: 'OverallStatus' } } ]
   @UI: { lineItem: [{ position: 90,
                    importance: #LOW,
                    label: 'Travel ID' }],
