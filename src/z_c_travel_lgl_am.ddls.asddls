@@ -34,6 +34,7 @@ define root view entity Z_C_TRAVEL_LGL_AM
       TotalPrice,
       CurrencyCode,
       Description,
+      @ObjectModel.text.element: [ 'OverallStatusText' ]
       OverallStatus,
       //_OverallStatus._Text[1: Language=$session.system_language ].Text as OverallStatusText,
       _OverallStatus._Text.Text as OverallStatusText : localized, // Retorna el texto de descripcion, de acuerdo al idioma del sistema (sy-lang)
