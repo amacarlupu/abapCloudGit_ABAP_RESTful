@@ -62,7 +62,7 @@ annotate entity Z_C_TRAVEL_LGL_AM with
                                         useForValidation: true } ]
   @UI: { lineItem: [{ position: 20,
                    importance: #HIGH,
-                   label: 'Travel ID' }],
+                   label: 'AgencyID' }],
          selectionField: [{ position: 20 }],
          identification: [{ position: 20 }]  }
   AgencyID;
@@ -89,7 +89,7 @@ annotate entity Z_C_TRAVEL_LGL_AM with
   EndDate;
 
   @UI.lineItem: [{ position: 60,
-                importance: #LOW }]
+                importance: #MEDIUM }]
   @UI.identification: [{ position: 60 }]
   BookingFee;
 
@@ -102,15 +102,15 @@ annotate entity Z_C_TRAVEL_LGL_AM with
                                                   element: 'Currency' },
                                         useForValidation: true } ]
   @UI.lineItem: [{ position: 80,
-            importance: #HIGH }]
+            importance: #LOW }]
   @UI.identification: [{ position: 80 }]
   CurrencyCode;
 
   @Consumption.valueHelpDefinition: [ { entity: { name: '/DMO/I_Overall_Status_VH',
                                                   element: 'OverallStatus' } } ]
   @UI: { lineItem: [{ position: 90,
-                   importance: #LOW,
-                   label: 'Travel ID' }],
+                   importance: #MEDIUM,
+                   label: 'OverallStatus' }],
          selectionField: [{ position: 40 }],
          textArrangement: #TEXT_ONLY,
          identification: [{ position: 90 }] }

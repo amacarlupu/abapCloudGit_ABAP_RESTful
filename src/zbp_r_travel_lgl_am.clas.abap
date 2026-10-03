@@ -1,0 +1,5 @@
+CLASS zbp_r_travel_lgl_am DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF z_r_travel_lgl_am.
+ENDCLASS.
+
+CLASS zbp_r_travel_lgl_am IMPLEMENTATION.
+ENDCLASS.

@@ -1,12 +1,14 @@
 managed implementation in class zbp_r_travel_lgl_am unique;
 strict ( 2 );
+with draft;
 
 define behavior for Z_R_TRAVEL_LGL_AM alias Travel//alias <alias_name>
 persistent table ztravel_lgl_am
+draft table ztravel_lgld_am // uso en draft
 lock master
-authorization master ( global, instance )
-//total etag LastChangedAt
+total etag LastChangedAt // uso en draft
 etag master LocalLastChangedAt
+authorization master ( global, instance )
 {
   create ( authorization : global );
   update;
@@ -14,13 +16,13 @@ etag master LocalLastChangedAt
   field ( numbering : managed, readonly ) TravelUUID;
 
   field ( readonly ) TravelID,
-                      OverallStatus,
-                      TotalPrice,
-                      LocalCreatedBy,
-                      LocalCreatedAt,
-                      LocalLastChangedAt,
-                      LocalLastChangedBy,
-                      LastChangedAt;
+  OverallStatus,
+  TotalPrice,
+  LocalCreatedBy,
+  LocalCreatedAt,
+  LocalLastChangedAt,
+  LocalLastChangedBy,
+  LastChangedAt;
 
   field ( mandatory ) CustomerID, AgencyID, BeginDate, EndDate, CurrencyCode;
 
@@ -36,9 +38,34 @@ etag master LocalLastChangedAt
   validation validateAgency on save { create; field AgencyID; }
   validation validateDateRange on save { create; field BeginDate, EndDate; }
 
-  determination setTravelNumber on save {create;}
-  determination setStatusToOpen on modify {create;}
-  determination calculateTotalPrice on modify { create; field BookingFee, CurrencyCode;}
+  determination setTravelNumber on save { create; }
+  determination setStatusToOpen on modify { create; }
+  determination calculateTotalPrice on modify { create; field BookingFee, CurrencyCode; }
+
+  determine action validateCustomerID { validation validateCustomer; } //relaciona con la accion anterior "validateCustomer"
+  determine action validateAgencyID { validation validateAgency; }
+  determine action validateDates { validation validateDateRange; }
+
+  side effects
+  {
+    field BookingFee affects field TotalPrice;
+    determine action validateCustomerID executed on field CustomerID affects messages; // Se llama al determinate action anterior
+    determine action validateAgencyID executed on field AgencyID affects messages;
+    determine action validateDates executed on field BeginDate, field EndDate affects messages;
+  }
+
+  // uso en draft
+  draft action Resume;
+  draft action Edit;
+  draft action Activate optimized;
+  draft action Discard;
+
+  draft determine action Prepare
+  {
+    validation validateCustomer;
+    validation validateAgency;
+    validation validateDateRange;
+  }
 
   mapping for ztravel_lgl_am
     {
