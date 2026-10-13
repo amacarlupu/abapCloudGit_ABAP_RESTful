@@ -79,9 +79,107 @@ CLASS lhc_Travel IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_instance_authorizations.
+
+    DATA: update_requested TYPE abap_bool,
+          update_granted   TYPE abap_bool,
+          delete_requested TYPE abap_bool,
+          delete_granted   TYPE abap_bool.
+
+    READ ENTITIES OF z_r_travel_lgl_am IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( AgencyID )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(travels)
+    FAILED failed.
+
+    update_requested = COND #( WHEN requested_authorizations-%update = if_abap_behv=>mk-on
+                                OR requested_authorizations-%action-Edit = if_abap_behv=>mk-on
+                                THEN abap_true
+                                ELSE abap_false ).
+
+
+    delete_requested = COND #( WHEN requested_authorizations-%delete = if_abap_behv=>mk-on
+                               THEN abap_true
+                               ELSE abap_false ).
+
+*    CHECK update_requested EQ abap_true.
+
+    DATA(lv_technical_name) = cl_abap_context_info=>get_user_technical_name(  ).
+
+    LOOP AT travels INTO DATA(travel) "70021
+      WHERE AgencyID     IS NOT INITIAL.
+
+      IF update_requested EQ abap_true.
+        IF lv_technical_name EQ 'CB9980000903' AND travel-AgencyID NE '70021'.
+          update_granted = abap_true.
+        ELSE.
+          update_granted = abap_false.
+
+        ENDIF.
+      ENDIF.
+
+      IF delete_requested EQ abap_true.
+        IF lv_technical_name EQ 'CB9980000903' AND travel-AgencyID NE '70021'.
+          delete_granted = abap_true.
+        ELSE.
+          delete_granted = abap_false.
+
+        ENDIF.
+      ENDIF.
+
+      APPEND VALUE #( LET upd_auth = COND #( WHEN update_granted EQ abap_true
+                                             THEN if_abap_behv=>auth-allowed
+                                             ELSE if_abap_behv=>auth-unauthorized  )
+                          del_auth = COND #( WHEN delete_granted EQ abap_true
+                                             THEN if_abap_behv=>auth-allowed
+                                             ELSE if_abap_behv=>auth-unauthorized )
+                      IN
+                      %tky = travel-%tky
+                      %update = upd_auth
+                      %action-Edit = upd_auth
+                      %delete = del_auth ) TO result.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
   METHOD get_global_authorizations.
+
+    DATA(lv_technical_name) = cl_abap_context_info=>get_user_technical_name(  ).
+
+*    lv_technical_name = 'DIFERENT USER'.
+
+    IF requested_authorizations-%create EQ if_abap_behv=>mk-on.
+      IF lv_technical_name EQ 'CB9980000903'.
+        result-%create = if_abap_behv=>auth-allowed.
+      ELSE.
+        result-%create = if_abap_behv=>auth-unauthorized.
+      ENDIF.
+    ENDIF.
+
+    IF requested_authorizations-%update EQ if_abap_behv=>mk-on OR
+       requested_authorizations-%action-Edit EQ if_abap_behv=>mk-on.
+
+      IF lv_technical_name EQ 'CB9980000903'.
+        result-%update = if_abap_behv=>auth-allowed.
+        result-%action-Edit = if_abap_behv=>auth-allowed.
+      ELSE.
+        result-%update = if_abap_behv=>auth-unauthorized.
+        result-%action-Edit = if_abap_behv=>auth-unauthorized.
+      ENDIF.
+
+    ENDIF.
+
+    IF requested_authorizations-%delete EQ if_abap_behv=>mk-on.
+
+      IF lv_technical_name EQ 'CB9980000903'.
+        result-%delete = if_abap_behv=>auth-allowed.
+      ELSE.
+        result-%delete = if_abap_behv=>auth-unauthorized.
+      ENDIF.
+
+    ENDIF.
+
   ENDMETHOD.
 
   METHOD acceptTravel.
