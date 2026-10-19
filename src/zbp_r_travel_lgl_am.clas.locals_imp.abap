@@ -207,6 +207,20 @@ CLASS lhc_Travel IMPLEMENTATION.
 
     DATA travels_for_update TYPE TABLE FOR UPDATE z_r_travel_lgl_am.
 
+    DATA(keys_valid_discount) = keys.
+
+    LOOP AT keys_valid_discount ASSIGNING FIELD-SYMBOL(<key_valid_discount>)
+        WHERE %param-discount_percent IS INITIAL
+            OR %param-discount_percent > 100
+            OR %param-discount_percent <= 0.
+
+      APPEND VALUE #( %tky =  <key_valid_discount>-%tky ) TO failed-travel.
+
+      DATA(lv_error) = abap_true.
+    ENDLOOP.
+
+    CHECK lv_error NE abap_true.
+
     READ ENTITIES OF z_r_travel_lgl_am IN LOCAL MODE
           ENTITY Travel
           FIELDS ( BookingFee )
@@ -276,12 +290,106 @@ CLASS lhc_Travel IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validateAgency.
+
+    READ ENTITIES OF z_r_travel_lgl_am IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( AgencyID )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(travels).
+
+*   Se usa "client" para mas adelante leer la tabla fisica, y evitar los for all entry en s4hana
+    DATA agencies TYPE SORTED TABLE OF /dmo/agency WITH UNIQUE KEY client agency_id.
+    agencies = CORRESPONDING #( travels DISCARDING DUPLICATES MAPPING agency_id = AgencyID EXCEPT * ).
+    DELETE agencies WHERE agency_id IS INITIAL.
+
+*    Comparar con los registros de tabla con la data que llega desde externo
+    IF agencies IS NOT INITIAL.
+
+      SELECT FROM /dmo/agency AS ddbb
+      INNER JOIN @agencies AS http_req ON ddbb~agency_id EQ http_req~agency_id "Por este join use el "client"
+      FIELDS ddbb~agency_id
+      INTO TABLE @DATA(valid_agencies).
+
+    ENDIF.
+
+    LOOP AT travels INTO DATA(travel).
+      IF travel-AgencyID  IS INITIAL.
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+      ELSEIF travel-AgencyID  IS NOT INITIAL AND NOT line_exists( valid_agencies[ agency_id = travel-AgencyID ] ).
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+      ENDIF.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
   METHOD validateCustomer.
+
+    READ ENTITIES OF z_r_travel_lgl_am IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( CustomerID )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(travels).
+
+*   Se usa "client" para mas adelante leer la tabla fisica, y evitar los for entry en s4hana
+    DATA customers TYPE SORTED TABLE OF /dmo/customer WITH UNIQUE KEY client customer_id.
+    customers = CORRESPONDING #( travels DISCARDING DUPLICATES MAPPING customer_id = CustomerID EXCEPT * ).
+    DELETE customers WHERE customer_id IS INITIAL.
+
+*    Comparar con los registros de tabla con la data que llega desde externo
+    IF customers IS NOT INITIAL.
+
+      SELECT FROM /dmo/customer AS ddbb
+      INNER JOIN @customers AS http_req ON ddbb~customer_id EQ http_req~customer_id
+      FIELDS ddbb~customer_id
+      INTO TABLE @DATA(valid_customers).
+
+    ENDIF.
+
+    LOOP AT travels INTO DATA(travel).
+      IF travel-CustomerID  IS INITIAL.
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+      ELSEIF travel-CustomerID IS NOT INITIAL AND NOT line_exists( valid_customers[ customer_id = travel-CustomerID ] ).
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+      ENDIF.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
   METHOD validateDateRange.
+
+    READ ENTITIES OF z_r_travel_lgl_am IN LOCAL MODE
+    ENTITY Travel
+    FIELDS ( BeginDate EndDate )
+    WITH CORRESPONDING #( keys )
+    RESULT DATA(travels).
+
+    LOOP AT travels INTO DATA(travel).
+
+      IF travel-BeginDate IS INITIAL.
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+      ENDIF.
+
+      IF travel-EndDate IS INITIAL.
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+      ENDIF.
+
+      IF travel-EndDate < travel-BeginDate AND travel-BeginDate IS NOT INITIAL
+                                           AND travel-EndDate IS NOT INITIAL.
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+      ENDIF.
+
+      IF travel-BeginDate < cl_abap_context_info=>get_system_date(  ) AND travel-BeginDate IS NOT INITIAL.
+        APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+      ENDIF.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
 ENDCLASS.
