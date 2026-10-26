@@ -58,8 +58,8 @@ annotate entity Z_C_TRAVEL_LGL_AM with
 
   // useForValidation --> es solo validacion en el frontend
   @Consumption.valueHelpDefinition: [ { entity: { name: '/DMO/I_Agency_StdVH',
-                                                  element: 'AgencyID' } }]
-//                                        useForValidation: true } ]
+                                                  element: 'AgencyID' },
+                                        useForValidation: true } ]
   @UI: { lineItem: [{ position: 20,
                    importance: #HIGH,
                    label: 'AgencyID' }],
@@ -70,7 +70,7 @@ annotate entity Z_C_TRAVEL_LGL_AM with
 
   @Consumption.valueHelpDefinition: [ { entity: { name: '/DMO/I_Customer_StdVH',
                                                   element: 'CustomerID' },
-                                        useForValidation: false } ]
+                                        useForValidation: true } ]
   @UI: { lineItem: [{ position: 30,
                    importance: #HIGH,
                    label: 'Travel ID' }],

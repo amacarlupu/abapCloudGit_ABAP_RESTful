@@ -92,6 +92,7 @@ CLASS lhc_Travel IMPLEMENTATION.
     RESULT DATA(travels)
     FAILED failed.
 
+*Valida si se ha solicitado una peticion de actualizacion, y a partir de ello habilita o deshabilita los permisos
     update_requested = COND #( WHEN requested_authorizations-%update = if_abap_behv=>mk-on
                                 OR requested_authorizations-%action-Edit = if_abap_behv=>mk-on
                                 THEN abap_true
@@ -106,24 +107,54 @@ CLASS lhc_Travel IMPLEMENTATION.
 
     DATA(lv_technical_name) = cl_abap_context_info=>get_user_technical_name(  ).
 
-    LOOP AT travels INTO DATA(travel) "70021
-      WHERE AgencyID     IS NOT INITIAL.
+    LOOP AT travels INTO DATA(travel). "70021
 
-      IF update_requested EQ abap_true.
-        IF lv_technical_name EQ 'CB9980000903' AND travel-AgencyID NE '70021'.
-          update_granted = abap_true.
-        ELSE.
-          update_granted = abap_false.
+      IF travel-AgencyID IS NOT INITIAL.
 
+        IF update_requested EQ abap_true.
+          IF lv_technical_name EQ 'CB9980000903' AND travel-AgencyID NE '70021'.
+            update_granted = abap_true.
+          ELSE.
+            update_granted = abap_false.
+
+            APPEND VALUE #( %tky = travel-%tky
+                            %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>not_authorized_for_agencyid
+                                                                agency_id = travel-AgencyID
+                                                                severity = if_abap_behv_message=>severity-error )
+                            %element-AgencyId = if_abap_behv=>mk-on
+                          ) TO reported-travel.
+
+          ENDIF.
         ENDIF.
-      ENDIF.
 
-      IF delete_requested EQ abap_true.
-        IF lv_technical_name EQ 'CB9980000903' AND travel-AgencyID NE '70021'.
-          delete_granted = abap_true.
-        ELSE.
-          delete_granted = abap_false.
+        IF delete_requested EQ abap_true.
+          IF lv_technical_name EQ 'CB9980000903' AND travel-AgencyID NE '70021'.
+            delete_granted = abap_true.
+          ELSE.
+            delete_granted = abap_false.
 
+            APPEND VALUE #( %tky = travel-%tky
+                            %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>not_authorized_for_agencyid
+                                                       agency_id = travel-AgencyID
+                                                       severity = if_abap_behv_message=>severity-error )
+                            %element-AgencyId = if_abap_behv=>mk-on
+                 ) TO reported-travel.
+
+          ENDIF.
+        ENDIF.
+
+      ELSE.
+
+        IF lv_technical_name EQ 'CB9980000903'.
+          update_granted = abap_true. "Este usuario siempre tendrá permisos
+        ENDIF.
+
+        IF update_granted = abap_false.
+          APPEND VALUE #( %tky = travel-%tky
+                          %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>not_authorized
+                                                              severity = if_abap_behv_message=>severity-error )
+                          %element-AgencyId = if_abap_behv=>mk-on
+               ) TO reported-travel.
         ENDIF.
       ENDIF.
 
@@ -154,6 +185,10 @@ CLASS lhc_Travel IMPLEMENTATION.
         result-%create = if_abap_behv=>auth-allowed.
       ELSE.
         result-%create = if_abap_behv=>auth-unauthorized.
+
+        APPEND VALUE #( %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>not_authorized
+                                                            severity = if_abap_behv_message=>severity-error )
+                        %global = if_abap_behv=>mk-on ) TO reported-travel.
       ENDIF.
     ENDIF.
 
@@ -166,6 +201,10 @@ CLASS lhc_Travel IMPLEMENTATION.
       ELSE.
         result-%update = if_abap_behv=>auth-unauthorized.
         result-%action-Edit = if_abap_behv=>auth-unauthorized.
+
+        APPEND VALUE #( %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>not_authorized
+                                                    severity = if_abap_behv_message=>severity-error )
+                        %global = if_abap_behv=>mk-on ) TO reported-travel.
       ENDIF.
 
     ENDIF.
@@ -176,6 +215,10 @@ CLASS lhc_Travel IMPLEMENTATION.
         result-%delete = if_abap_behv=>auth-allowed.
       ELSE.
         result-%delete = if_abap_behv=>auth-unauthorized.
+
+        APPEND VALUE #( %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>not_authorized
+                                                    severity = if_abap_behv_message=>severity-error )
+                        %global = if_abap_behv=>mk-on ) TO reported-travel.
       ENDIF.
 
     ENDIF.
@@ -215,6 +258,11 @@ CLASS lhc_Travel IMPLEMENTATION.
             OR %param-discount_percent <= 0.
 
       APPEND VALUE #( %tky =  <key_valid_discount>-%tky ) TO failed-travel.
+
+      APPEND VALUE #( %tky =  <key_valid_discount>-%tky
+                      %msg = NEW /dmo/cm_flight_messages( textid = /dmo/cm_flight_messages=>discount_invalid
+                                                          severity = if_abap_behv_message=>severity-error )
+                      %op-%action-deductDiscount = if_abap_behv=>mk-on ) TO reported-travel.
 
       DATA(lv_error) = abap_true.
     ENDLOOP.
@@ -313,11 +361,33 @@ CLASS lhc_Travel IMPLEMENTATION.
     ENDIF.
 
     LOOP AT travels INTO DATA(travel).
+
+              APPEND VALUE #(
+    %tky = travel-%tky
+    %state_area = 'VALIDATE_AGENCY'
+  ) TO reported-travel.
+
       IF travel-AgencyID  IS INITIAL.
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
 
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_AGENCY'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>enter_agency_id
+                                                             severity = if_abap_behv_message=>severity-error )
+                       %element-AgencyID = if_abap_behv=>mk-on )  "Donde se hace focus
+                       TO reported-travel.
+
       ELSEIF travel-AgencyID  IS NOT INITIAL AND NOT line_exists( valid_agencies[ agency_id = travel-AgencyID ] ).
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_AGENCY'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>agency_unkown
+                                                     agency_id = travel-AgencyID
+                                                     severity = if_abap_behv_message=>severity-error )
+                        %element-AgencyID = if_abap_behv=>mk-on )  "Donde se hace focus
+                        TO reported-travel.
+
 
       ENDIF.
 
@@ -349,11 +419,31 @@ CLASS lhc_Travel IMPLEMENTATION.
     ENDIF.
 
     LOOP AT travels INTO DATA(travel).
+
+      APPEND VALUE #(
+    %tky = travel-%tky
+    %state_area = 'VALIDATE_CUSTOMER'
+  ) TO reported-travel.
+
       IF travel-CustomerID  IS INITIAL.
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
 
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_CUSTOMER'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>enter_customer_id
+                                             severity = if_abap_behv_message=>severity-error )
+                        %element-CustomerID = if_abap_behv=>mk-on )  "Donde se hace focus
+                        TO reported-travel.
+
       ELSEIF travel-CustomerID IS NOT INITIAL AND NOT line_exists( valid_customers[ customer_id = travel-CustomerID ] ).
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_CUSTOMER'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>customer_unkown
+                                             severity = if_abap_behv_message=>severity-error )
+                        %element-CustomerID = if_abap_behv=>mk-on )  "Donde se hace focus
+                        TO reported-travel.
 
       ENDIF.
 
@@ -371,21 +461,60 @@ CLASS lhc_Travel IMPLEMENTATION.
 
     LOOP AT travels INTO DATA(travel).
 
+          APPEND VALUE #(
+    %tky = travel-%tky
+    %state_area = 'VALIDATE_DATES'
+  ) TO reported-travel.
+
       IF travel-BeginDate IS INITIAL.
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_DATES'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>enter_begin_date
+                                      severity = if_abap_behv_message=>severity-error )
+                        %element-BeginDate = if_abap_behv=>mk-on )  "Donde se hace focus
+                        TO reported-travel.
       ENDIF.
 
       IF travel-EndDate IS INITIAL.
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_DATES'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>enter_end_date
+                                             severity = if_abap_behv_message=>severity-error )
+                        %element-EndDate = if_abap_behv=>mk-on )  "Donde se hace focus
+                        TO reported-travel.
       ENDIF.
 
       IF travel-EndDate < travel-BeginDate AND travel-BeginDate IS NOT INITIAL
                                            AND travel-EndDate IS NOT INITIAL.
+
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_DATES'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>begin_date_bef_end_date
+                                             begin_date = travel-BeginDate
+                                             end_date = travel-EndDate
+                                             severity = if_abap_behv_message=>severity-error )
+                       %element-BeginDate = if_abap_behv=>mk-on
+                       %element-EndDate = if_abap_behv=>mk-on )  "Donde se hace focus
+                       TO reported-travel.
+
       ENDIF.
 
       IF travel-BeginDate < cl_abap_context_info=>get_system_date(  ) AND travel-BeginDate IS NOT INITIAL.
         APPEND VALUE #( %tky = travel-%tky ) TO failed-travel.
+
+        APPEND VALUE #( %tky = travel-%tky
+                        %state_area = 'VALIDATE_DATES'
+                        %msg = NEW /dmo/cm_flight_messages(  textid = /dmo/cm_flight_messages=>begin_date_on_or_bef_sysdate
+                                     begin_date = travel-BeginDate
+                                     severity = if_abap_behv_message=>severity-error )
+                        %element-BeginDate = if_abap_behv=>mk-on ) "Donde se hace focus
+                        TO reported-travel.
       ENDIF.
 
     ENDLOOP.
